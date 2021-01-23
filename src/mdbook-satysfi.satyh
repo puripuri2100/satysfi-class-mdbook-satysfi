@@ -133,7 +133,7 @@ let register-location-frame key ib =
 
 let link-to-location-frame key ib =
   inline-frame-breakable (0pt, 0pt, 0pt, 0pt)
-    (Annot.link-to-location-frame key None) ib
+    (Annot.link-to-location-frame key (Some(0.5pt, Color.blue))) ib
 
 
 
@@ -162,7 +162,7 @@ let-inline ctx \footnote key =
   |> link-to-location-frame (`footnote-body`^key)
 
 
-let-inline \href link it = {\href(link)(it);}
+let-inline \href link it = {\href ?:((0.5pt, Color.red)) (link)(it);}
 
 
 let-inline \strike it = {\midline{#it;}}
@@ -197,7 +197,32 @@ let-inline ctx \strong it =
 
 
 
-let-block +block-quote bt = '<+quotation<#bt;>>
+let-block ctx +block-quote bt =
+  let f ctx =
+    let font-size = get-font-size ctx in
+    let (_,r,_) = get-font HanIdeographic ctx in
+    let pads = ((font-size *' r) *' 1.5, 5pt, 5pt, 5pt) in
+    let pad = font-size *' r in
+    let decoset =
+      let back-color = Color.gray 0.9 in
+      let back-gr x y w h d =
+        fill back-color (Gr.rectangle (x +' pad, y -'d) (x +' w, y +' h))
+      in
+      let stroke-gr x y w h d =
+        stroke 1.5pt Color.black
+          (Gr.line (x +' pad, y -' d) (x +' pad, y +' h))
+      in
+      let deco (x, y) w h d =
+        [
+          back-gr x y w h d;
+          stroke-gr x y w h d;
+        ]
+      in
+      (deco, deco, deco, deco)
+    in
+    (pads, decoset)
+  in
+  Quotation.quotation-scheme ctx (Some f) None None bt
 
 
 
@@ -363,7 +388,8 @@ let-inline ctx \task-list-marker b =
 
 
 let make-check-gr-lst main-font-size is-check =
-  let thin = 0.8pt in
+  let thin = 0.5pt in
+  let thick = 1.2pt in
   let color = Color.black in
   let square-path =
     Gr.rectangle (0pt, 0pt) (main-font-size *' 0.75, main-font-size *' 0.75 )
@@ -372,11 +398,11 @@ let make-check-gr-lst main-font-size is-check =
     Gr.poly-line (main-font-size *' (0.0 -. 0.15), main-font-size *' 0.55)
       [
         (main-font-size *' 0.15, main-font-size *' 0.15);
-        (main-font-size *' 1.1, main-font-size *' 1.25)
+        (main-font-size *' 0.85, main-font-size *' 1.05)
       ]
   in
   if is-check then
-    List.map (stroke thin color) [square-path; check-path]
+    [stroke thin color square-path; stroke thick color check-path]
   else
     [stroke thin color square-path]
 
