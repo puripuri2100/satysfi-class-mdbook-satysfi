@@ -4,7 +4,7 @@
 ;; Library declaration
 (library
   ;; Library name
-  (name "satysfi-class-mdbook-satysfi")
+  (name "class-mdbook-satysfi")
   ;; Library version
   (version "0.1.0")
   ;; Files
@@ -25,7 +25,7 @@
 ;; Library doc declaration
 (libraryDoc
   ;; Library doc name
-  (name "satysfi-class-mdbook-satysfi-doc")
+  (name "class-mdbook-satysfi-doc")
   ;; Library version
   (version "0.1.0")
   ;; Working directory to build docs

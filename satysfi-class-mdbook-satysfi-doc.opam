@@ -1,5 +1,5 @@
 opam-version: "2.0"
-name: "satysfi-class-mdbook-satysfi"
+name: "satysfi-class-mdbook-satysfi-doc"
 version: "0.1.0"
 synopsis: "Document of A Great SATySFi Package"
 description: """
@@ -16,7 +16,7 @@ depends: [
   "satyrographos" { >= "0.0.2.6" & < "0.0.3" }
 
   # You may want to include the corresponding library
-  "satysfi-class-mdbook-satysfis" {= "%{version}%"}
+  "satysfi-class-mdbook-satysfi" {= "%{version}%"}
 ]
 build: [
   ["satyrographos" "opam" "build"
