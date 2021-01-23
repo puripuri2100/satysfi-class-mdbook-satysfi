@@ -21,6 +21,7 @@ depends: [
   "satysfi-easytable"
   "satysfi-quotation"
   "satysfi-uline"
+  "satysfi-ruby"
   "satysfi-fonts-junicode"
 ]
 build: [ ]
