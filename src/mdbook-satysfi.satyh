@@ -4,6 +4,7 @@
 @require: annot
 @require: itemize
 @require: code
+@require: vdecoset
 
 @require: base/list-ext
 @require: base/option-ext
@@ -61,16 +62,16 @@ end = struct
 
 
 let font-ratio-latin = 1.0
-let font-ratio-cjk = 0.88
+let font-ratio-cjk = 0.95
 
-let font-latin-roman = (`fonts-junicode:Junicode`, font-ratio-latin, 0.)
-let font-latin-bold = (`fonts-junicode:Junicode-Bold`, font-ratio-latin, 0.)
-let font-latin-italic = (`fonts-junicode:Junicode-Italic`, font-ratio-latin, 0.)
-let font-latin-bold-italic = (`fonts-junicode:Junicode-BoldItalic`, font-ratio-latin, 0.)
-let font-latin-sans = (`lmsans`, font-ratio-latin, 0.)
-let font-latin-mono = (`lmmono`, font-ratio-latin, 0.)
-let font-cjk-mincho = (`ipaexm`, font-ratio-cjk, 0.)
-let font-cjk-gothic = (`ipaexg`, font-ratio-cjk, 0.)
+let font-latin-roman = (`fonts-noto-serif:NotoSerif-Regular`, font-ratio-latin, 0.)
+let font-latin-bold = (`fonts-noto-serif:NotoSerif-Bold`, font-ratio-latin, 0.)
+let font-latin-italic = (`fonts-noto-serif:NotoSerif-Italic`, font-ratio-latin, 0.)
+let font-latin-bold-italic = (`fonts-noto-serif:NotoSerif-BoldItalic`, font-ratio-latin, 0.)
+let font-latin-sans = (`fonts-noto-sans:NotoSans-Regular`, font-ratio-latin, 0.)
+let font-latin-mono = (`fonts-dejavu:DejaVuSansMono`, font-ratio-latin, 0.)
+let font-cjk-mincho = (`fonts-noto-serif-cjk-jp:NotoSerifCJKjp-Regular`, font-ratio-cjk, 0.)
+let font-cjk-gothic = (`fonts-noto-sans-cjk-jp:NotoSansCJKjp-Regular`, font-ratio-cjk, 0.)
 
 
 let set-cjk-font font-name ctx =
@@ -79,6 +80,12 @@ let set-cjk-font font-name ctx =
 
 let set-latin-font font-name ctx =
   ctx |> set-font Latin font-name
+
+
+let set-code-font ctx =
+  ctx |> set-latin-font font-latin-mono
+      |> set-cjk-font font-cjk-gothic
+      |> set-hyphen-penalty 100000
 
 
 
@@ -255,8 +262,58 @@ let-block ctx +rule =
 
 
 
-let-block +code code = '<+code(code);>
-let-inline \code code = {\code(code);}
+let-block ctx +code code =
+  let pads = (5pt, 5pt, 5pt, 5pt) in
+  let decoset = VDecoSet.simple-frame 1pt (Color.gray 0.5) (Color.gray 0.85) in
+  let f ctx =
+    let ctx =
+      ctx
+      |> set-code-font
+      |> set-paragraph-margin 4pt 4pt
+    in
+    let char-width = {0} |> read-inline ctx |> get-natural-width in
+    let code-lst =
+      code
+      |> split-into-lines
+      |> List.tail
+      |> Option.unwrap-or([])
+    in
+      code-lst
+      |> List.map (fun (i, s) -> (
+        let ib =
+          inline-skip (char-width *' (float i))
+          ++ read-inline ctx (embed-string s)
+          ++ inline-fil
+        in
+        line-break true true ctx ib
+      ))
+      |> List.fold-left (+++) block-nil
+  in
+  block-frame-breakable ctx pads decoset f
+
+
+
+let-inline ctx \code code =
+  let pads = (2pt, 2pt, 2pt, 2pt) in
+  let decoset =
+    let back-gr x y w h d =
+      fill (Color.gray 0.85) (Gr.rectangle (x, y -'d) (x +' w, y +' h))
+    in
+    let deco (x, y) w h d =
+      [
+        back-gr x y w h d;
+      ]
+    in
+      (deco, deco, deco, deco)
+  in
+  let ctx = set-code-font ctx in
+  let ib =
+    code
+    |> embed-string
+    |> read-inline ctx
+    |> inline-frame-breakable pads decoset
+  in
+  script-guard Latin ib
 
 
 let-mutable outline-ref <- []

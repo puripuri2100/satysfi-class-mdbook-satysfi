@@ -22,7 +22,11 @@ depends: [
   "satysfi-quotation"
   "satysfi-uline"
   "satysfi-ruby"
-  "satysfi-fonts-junicode"
+  "satysfi-fonts-noto-serif"
+  "satysfi-fonts-noto-serif-cjk-jp"
+  "satysfi-fonts-noto-sans"
+  "satysfi-fonts-noto-sans-cjk-jp"
+  "satysfi-fonts-dejavu"
 ]
 build: [ ]
 install: [
