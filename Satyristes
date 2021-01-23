@@ -1,0 +1,45 @@
+;; For Satyrographos 0.0.2 series
+(version 0.0.2)
+
+;; Library declaration
+(library
+  ;; Library name
+  (name "satysfi-class-mdbook-satysfi")
+  ;; Library version
+  (version "0.1.0")
+  ;; Files
+  (sources
+    ((packageDir "src")))
+  ;; OPAM package file
+  (opam "satysfi-class-mdbook-satysfi.opam")
+  ;; Dependency
+  (dependencies
+    ((dist ()) ; Standard library
+    (base ())
+    (easytable ())
+    (quotation ())
+    (uline ())
+    (fonts-junicode ())
+    )))
+
+;; Library doc declaration
+(libraryDoc
+  ;; Library doc name
+  (name "satysfi-class-mdbook-satysfi-doc")
+  ;; Library version
+  (version "0.1.0")
+  ;; Working directory to build docs
+  (workingDirectory "doc")
+  ;; Build commands
+  (build
+    ;; Run SATySFi
+    ((satysfi "manual.saty" "-o" "manual.pdf")))
+  ;; Files
+  (sources
+    ((doc "manual.pdf" "doc/manual.pdf")))
+  ;; OPAM package file
+  (opam "satysfi-class-mdbook-satysfi-doc.opam")
+  ;; Dependency
+  (dependencies
+    ((class-mdbook-satysfi ()) ; the main library
+    )))

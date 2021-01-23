@@ -1,0 +1,32 @@
+opam-version: "2.0"
+name: "satysfi-class-mdbook-satysfi"
+version: "0.1.0"
+synopsis: "A Great SATySFi Package"
+description: """
+Brilliant description comes here.
+"""
+maintainer: "Naoki Kaneko <puriuri2100@gmail.com>"
+authors: "Naoki Kaneko <puriuri2100@gmail.com>"
+license: "MIT"
+homepage: "https://github.com/puripuri2100/satysfi-class-mdbook-satysfi"
+dev-repo: "git+https://github.com/puripuri2100/satysfi-class-mdbook-satysfi.git"
+bug-reports: "https://github.com/puripuri2100/satysfi-class-mdbook-satysfi/issues"
+depends: [
+  "satysfi" { >= "0.0.5" & < "0.0.6" }
+  "satyrographos" { >= "0.0.2.6" & < "0.0.3" }
+
+  # If your library depends on other libraries, please write down here
+  "satysfi-dist"
+  "satysfi-base"
+  "satysfi-easytable"
+  "satysfi-quotation"
+  "satysfi-uline"
+  "satysfi-fonts-junicode"
+]
+build: [ ]
+install: [
+  ["satyrographos" "opam" "install"
+   "--name" "class-mdbook-satysfi"
+   "--prefix" "%{prefix}%"
+   "--script" "%{build}%/Satyristes"]
+]

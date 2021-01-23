@@ -1,0 +1,561 @@
+@require: math
+@require: color
+@require: gr
+@require: annot
+@require: itemize
+@require: code
+
+@require: base/list-ext
+@require: base/option-ext
+@require: base/ord
+@require: base/float
+@require: base/length
+@require: easytable/easytable
+@require: quotation/quotation
+@require: uline/uline
+
+
+module MdBookSATySFi : sig
+
+  val document: 'a -> block-text -> document
+    constraint 'a :: (|
+      title : inline-text;
+      author : inline-text;
+    |)
+
+  direct +Chapter : [int; inline-text; block-text] block-cmd
+  direct +Separator : [] block-cmd
+  direct +PartTitle : [inline-text] block-cmd
+  direct \strong : [inline-text] inline-cmd
+  direct \emph : [inline-text] inline-cmd
+  direct \strike : [inline-text] inline-cmd
+  direct +block-quote : [block-text] block-cmd
+  direct +heading : [int; inline-text] block-cmd
+  direct +p : [inline-text] block-cmd
+  direct \p : [inline-text] inline-cmd
+  direct +code : [string] block-cmd
+  direct \code : [string] inline-cmd
+  direct \href : [string; inline-text] inline-cmd
+  direct \img : [string; inline-text] inline-cmd
+  direct \footnote : [string] inline-cmd
+  direct +add-footnote : [string; inline-text] block-cmd
+  direct +rule : [] block-cmd
+  direct \task-list-marker : [bool] inline-cmd
+  direct \item : [inline-text] inline-cmd
+  direct \listing : [inline-text list] inline-cmd
+  direct +listing : [inline-text list] block-cmd
+  direct \enumerate : [int; inline-text list] inline-cmd
+  direct +enumerate : [int; inline-text list] block-cmd
+  type alignment
+  val l : alignment
+  val c : alignment
+  val r : alignment
+  direct +table : [alignment list; inline-text list; (inline-text list) list] block-cmd
+
+end = struct
+
+
+let font-ratio-latin = 1.0
+let font-ratio-cjk = 0.88
+
+let font-latin-roman = (`fonts-junicode:Junicode`, font-ratio-latin, 0.)
+let font-latin-bold = (`fonts-junicode:Junicode-Bold`, font-ratio-latin, 0.)
+let font-latin-italic = (`fonts-junicode:Junicode-Italic`, font-ratio-latin, 0.)
+let font-latin-bold-italic = (`fonts-junicode:Junicode-BoldItalic`, font-ratio-latin, 0.)
+let font-latin-sans = (`lmsans`, font-ratio-latin, 0.)
+let font-latin-mono = (`lmmono`, font-ratio-latin, 0.)
+let font-cjk-mincho = (`ipaexm`, font-ratio-cjk, 0.)
+let font-cjk-gothic = (`ipaexg`, font-ratio-cjk, 0.)
+
+
+let set-cjk-font font-name ctx =
+  ctx |> set-font HanIdeographic font-name
+      |> set-font Kana font-name
+
+let set-latin-font font-name ctx =
+  ctx |> set-font Latin font-name
+
+
+
+let font-size-normal = 12pt
+let line-feed-size = 8pt
+let paragraph-margin = 14pt
+let page-width = 210mm
+let page-height = 297mm
+let top-space = 20mm
+let bottom-space = 20mm
+let left-space = (page-width -' ((font-size-normal *' font-ratio-cjk) *' 40.0)) *' 0.5
+let right-space = (page-width -' ((font-size-normal *' font-ratio-cjk) *' 40.0)) *' 0.5
+let text-width = page-width -' left-space -' right-space
+
+
+let ctx-get-initial-context l-width =
+  get-initial-context l-width (command \math)
+    |> set-font-size font-size-normal
+    |> set-dominant-wide-script Kana
+    |> set-language Kana Japanese
+    |> set-language HanIdeographic Japanese
+    |> set-cjk-font font-cjk-mincho
+    |> set-dominant-narrow-script Latin
+    |> set-language Latin English
+    |> set-latin-font font-latin-roman
+    |> set-hyphen-penalty 100
+    |> set-math-font `lmodern`
+    |> set-manual-rising 0pt % 文字の上下の補正値
+    |> set-text-color Color.black
+    |> set-leading line-feed-size
+    |> set-min-gap-of-lines line-feed-size
+    |> set-paragraph-margin paragraph-margin paragraph-margin
+
+
+
+let register-cross-reference-num label title =
+  register-cross-reference (label ^ `-num`) title
+
+let register-cross-reference-page label title =
+  hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
+
+
+let get-cross-reference-num label =
+match get-cross-reference (label ^ `-num`) with
+  | None -> `?`
+  | Some (title) -> title
+
+let get-cross-reference-page label =
+match get-cross-reference (label ^ `-page`) with
+  | None -> `?`
+  | Some (title) -> title
+
+
+let register-location-frame key ib =
+  inline-frame-breakable (0pt, 0pt, 0pt, 0pt)
+    (Annot.register-location-frame key) ib
+
+let link-to-location-frame key ib =
+  inline-frame-breakable (0pt, 0pt, 0pt, 0pt)
+    (Annot.link-to-location-frame key None) ib
+
+
+
+let-mutable footnote-lst <- []
+let-mutable footnote-num <- 0
+
+let-block ctx +add-footnote key text =
+  let () = footnote-lst <- (key, text)::!footnote-lst in
+  block-nil
+
+let-inline ctx \footnote key =
+  let () = footnote-num <- !footnote-num + 1 in
+  let () = register-cross-reference-num (`footnote-`^key) (arabic !footnote-num) in
+  let font-size = get-font-size ctx in
+  let num-ib =
+    let it-num = embed-string (arabic !footnote-num) in
+    let ctx =
+      ctx
+      |> set-font-size (font-size *' 0.75)
+      |> set-manual-rising (font-size *' 0.25)
+    in
+      read-inline ctx {†#it-num;}
+  in
+  num-ib
+  |> register-location-frame (`footnote-num`^key)
+  |> link-to-location-frame (`footnote-body`^key)
+
+
+let-inline \href link it = {\href(link)(it);}
+
+
+let-inline \strike it = {\midline{#it;}}
+
+let-mutable is-emph <- false
+
+let-inline ctx \emph it =
+  let () = is-emph <- true in
+  let _ = read-inline ctx it in
+  let ctx =
+      ctx
+      |> set-cjk-font font-cjk-mincho
+      |> set-latin-font font-latin-italic
+  in
+  let ib = read-inline ctx it in
+  let () = is-emph <- false in
+  ib
+
+
+let-inline ctx \strong it =
+  let ctx =
+    if !is-emph then
+      ctx
+      |> set-cjk-font font-cjk-gothic
+      |> set-latin-font font-latin-bold-italic
+    else
+      ctx
+      |> set-cjk-font font-cjk-gothic
+      |> set-latin-font font-latin-bold
+  in
+  read-inline ctx it
+
+
+
+let-block +block-quote bt = '<+quotation<#bt;>>
+
+
+
+let indent ctx = inline-skip ((get-font-size ctx) *' font-ratio-cjk)
+
+
+let-block ctx +p inner =
+  let ib-indent = indent ctx in
+  let ib-inner = read-inline ctx inner in
+    line-break true true ctx (ib-indent ++ ib-inner ++ inline-fil)
+
+let-inline \p inner = {#inner;}
+
+
+
+let-block ctx +rule =
+  let line = Gr.line (0pt,0pt) (text-width *' 0.95,0pt) in
+  let thick = 1.0pt in
+  let ib =
+    inline-graphics (text-width *' 0.95) thick 0pt (fun pt -> (
+      [line |> shift-path pt |> stroke thick (Color.gray 0.4)]
+    ))
+  in
+  line-break true true ctx (inline-fil ++ ib ++ inline-fil)
+
+
+
+let-block +code code = '<+code(code);>
+let-inline \code code = {\code(code);}
+
+
+let-mutable outline-ref <- []
+
+let-block ctx +heading n title =
+  let font-size =
+    match n with
+    | 1 -> 25pt
+    | 2 -> 20pt
+    | 3 -> 18pt
+    | _ -> 15pt
+  in
+  let ctx =
+    ctx
+      |> set-font-size font-size
+      |> set-cjk-font font-cjk-gothic
+      |> set-latin-font font-latin-sans
+      |> set-paragraph-margin 20pt 15pt
+  in
+  title
+  |> read-inline ctx
+  |> (fun ib -> ib ++ inline-fil)
+  |> line-break true false ctx
+
+
+let-mutable img-num <- 0
+let-inline ctx \img path title =
+  let () = img-num <- !img-num + 1 in
+  let image = load-image path in
+  let insert-image = use-image-by-width image (text-width *' 0.75) in
+  let img-num-it = !img-num |> arabic |> embed-string in
+  let fig-num-ib = read-inline ctx {fig#img-num-it;: #title;} in
+  let fig-num-bb = line-break false true ctx (inline-fil ++ fig-num-ib ++ inline-fil) in
+  let bb = (line-break true false ctx (inline-fil ++ insert-image ++ inline-fil)) +++ fig-num-bb in
+  inline-fil ++ embed-block-breakable ctx bb ++ inline-fil
+
+
+
+type alignment = cellfmt
+
+let l = EasyTable.align-left
+let c = EasyTable.align-center
+let r = EasyTable.align-right
+
+let-block ctx +table alignment-lst header-lst body-lst =
+  let it = {\easytable(alignment-lst)(List.append header-lst (List.concat body-lst));} in
+  let ib = read-inline ctx it in
+  line-break true true ctx (inline-fil ++ ib ++ inline-fil)
+
+
+
+let minus = float (-1)
+
+let default-listing ctx lst =
+  let text-width = get-text-width ctx in
+  let main-size = (get-font-size ctx) *' 0.5 in
+  let gr-lst =
+    match (List.length lst) mod 3 with
+    | 1 ->
+      [
+        Gr.circle (main-size*'0.5,main-size*'0.5) (main-size *' 0.4)
+        |> fill Color.black
+      ]
+    | 2 ->
+      [
+        Gr.polygon (0pt,0pt) [(main-size, main-size *' 0.5); (0pt, main-size)]
+        |> fill Color.black
+      ]
+    | _ ->
+      [
+        Gr.polygon (main-size *' 0.5, main-size)
+          [
+            (0pt, main-size *' 0.5);
+            (main-size *' 0.5, 0pt);
+            (main-size, main-size *' 0.5);
+          ]
+        |> fill Color.black
+      ]
+  in
+  let circle-ib =
+    let main =
+      inline-graphics main-size main-size 0pt
+        (fun pt -> List.map (shift-graphics pt) gr-lst)
+    in
+      inline-skip 3pt ++ main ++ inline-skip 3pt
+  in
+    circle-ib
+
+
+let default-enumerate plus ctx lst =
+  let num-opt = List.head lst in
+  let num-str =
+    match num-opt with
+    | None -> ` `
+    | Some(n) -> `(` ^ arabic (n + plus - 1) ^ `)`
+  in
+  let title-ib =
+    num-str |> embed-string |> read-inline ctx
+  in
+    inline-skip 3pt ++ title-ib ++ inline-skip 3pt
+
+
+type t =
+  | Nothing
+  | Listing
+  | Enumerate
+
+let is-Nothing t =
+  match t with
+  | Nothing -> true
+  | _ -> false
+
+let equal-t t1 t2 =
+  match (t1, t2) with
+  | (Nothing,_) -> true
+  | (_,Nothing) -> true
+  | (Listing,Listing) -> true
+  | (Enumerate,Enumerate) -> true
+  | _ -> false
+
+
+let-mutable t-ref <- Nothing
+
+let-mutable count-lst <- []
+
+let-mutable title-fun <- default-listing
+
+let-mutable check-list-ref <- None
+
+
+let-inline ctx \task-list-marker b =
+  let () = check-list-ref <- Some(b) in
+  inline-nil
+
+
+let make-check-gr-lst main-font-size is-check =
+  let thin = 0.8pt in
+  let color = Color.black in
+  let square-path =
+    Gr.rectangle (0pt, 0pt) (main-font-size *' 0.75, main-font-size *' 0.75 )
+  in
+  let check-path =
+    Gr.poly-line (main-font-size *' (0.0 -. 0.15), main-font-size *' 0.55)
+      [
+        (main-font-size *' 0.15, main-font-size *' 0.15);
+        (main-font-size *' 1.1, main-font-size *' 1.25)
+      ]
+  in
+  if is-check then
+    List.map (stroke thin color) [square-path; check-path]
+  else
+    [stroke thin color square-path]
+
+
+let-inline ctx \item inner =
+  let ctx =
+    ctx
+    |> set-paragraph-margin 0pt 0pt
+  in
+  let inner-ib = read-inline ctx inner in
+  let main-font-size = get-font-size ctx in
+  let old-lst = !count-lst in
+  let head =
+    List.head old-lst |> Option.from 0
+  in
+  let tail-lst =
+    List.tail old-lst |> Option.from []
+  in
+  let () = count-lst <- (head+1) :: tail-lst in
+  let new-lst = !count-lst in
+  let f = !title-fun in
+  let check-lst-ib =
+    match !check-list-ref with
+      | None -> inline-nil
+      | Some(b) -> (
+        let check-gr-lst = make-check-gr-lst main-font-size b in
+        let gr pt = List.map (shift-graphics pt) check-gr-lst in
+        inline-graphics main-font-size main-font-size 0pt gr
+      )
+  in
+  let title-ib = check-lst-ib ++ (f ctx new-lst) in
+  let title-ib-width = get-natural-width title-ib in
+  let make-main-bb ctx =
+    inline-skip (title-ib-width *' minus) ++ title-ib ++ inner-ib ++ inline-fil
+    |> line-break true true ctx
+  in
+  let deco-set = VDecoSet.empty in
+  let pads = (title-ib-width, 0pt, 0pt, 0pt) in
+  let main-bb = block-frame-breakable ctx pads deco-set make-main-bb in
+  let () = check-list-ref <- None in
+    inline-fil ++ embed-block-breakable ctx main-bb
+
+
+let make-itemize ctx f change-bool itemize =
+  let old-default-f = !title-fun in
+  let old-default-lst = !count-lst in
+  let () =
+    if change-bool then
+      count-lst <- 0::!count-lst
+    else
+      count-lst <- []
+  in
+  let () = title-fun <- f in
+  let make-bb it =
+    let ctx =
+      ctx
+      |> set-paragraph-margin 0pt 0pt
+    in
+    let ib = read-inline ctx it in
+    ib ++ inline-fil
+    |> line-break true true ctx
+  in
+  let main-bb =
+    itemize
+    |> List.map make-bb
+    |> List.fold-left (+++) block-nil
+  in
+  let () = title-fun <- old-default-f in
+  let () = count-lst <- old-default-lst in
+  main-bb
+
+
+let listing ctx itemize =
+  let b = equal-t Listing !t-ref in
+  let () = t-ref <- Listing in
+  make-itemize ctx default-listing b itemize
+
+
+let enumerate ctx n itemize =
+  let b = equal-t Enumerate !t-ref in
+  let () = t-ref <- Enumerate in
+  make-itemize ctx (default-enumerate n) b itemize
+
+
+let-block ctx +listing itemize =
+  listing ctx itemize
+
+let-inline ctx \listing itemize =
+    inline-fil ++ embed-block-breakable ctx (listing ctx itemize)
+
+
+let-block ctx +enumerate n itemize =
+  enumerate ctx n itemize
+
+let-inline ctx \enumerate n itemize =
+    inline-fil ++ embed-block-breakable ctx (enumerate ctx n itemize)
+
+
+
+
+let-mutable toc-lst <- []
+type toc-type =
+  | Chapter of int * inline-text * int
+  | PartTitle of inline-text * int
+  | Separator
+
+let-block ctx +Separator =
+  let () = toc-lst <- Separator::!toc-lst in
+  block-nil
+
+let-block ctx +PartTitle it =
+  let f info _ =
+    toc-lst <- PartTitle(it, info#page-number)::!toc-lst
+  in
+  hook-page-break-block f
+
+let-block ctx +Chapter depth title bt =
+  let f info _ =
+    toc-lst <- Chapter(depth, title, info#page-number)::!toc-lst
+  in
+  let bn = hook-page-break-block f in
+  let bb = read-block ctx bt in
+  let rev-footnote-lst = List.reverse !footnote-lst in
+  let footnote-block =
+    rev-footnote-lst
+    |> List.map (fun (key, it) -> (
+      let ib = read-inline ctx it in
+      ib
+      |> register-location-frame (`footnote-body`^key)
+      |> link-to-location-frame (`footnote-num`^key)
+    )) %----- TODO: まともな関数にする
+    |> List.map (fun ib -> line-break true true ctx (ib ++ inline-fil))
+    |> List.fold-left (+++) block-nil
+  in
+  let () = footnote-lst <- [] in
+  clear-page +++ bn +++ bb +++ footnote-block %----- TODO: bodyとfootnoteの間に線とか入れたい
+
+
+let document record inner =
+  let ctx-doc = ctx-get-initial-context text-width in
+  let bb-main = read-block ctx-doc inner in
+
+  let page = UserDefinedPaper(page-width, page-height) in
+
+  let pagecontf pbinfo =
+    (|
+      text-height = page-height -' (top-space +' bottom-space);
+      text-origin = (left-space, top-space);
+    |)
+  in
+
+  let pagepartsf pbinfo =
+    let page-num = embed-string (arabic pbinfo#page-number) in
+    let ctx = set-paragraph-margin 0pt 0pt ctx-doc in
+    let header = block-nil in
+    let header-origin = (left-space, 0pt) in
+    let footer =
+      let footer-main = line-break true true ctx (inline-fil ++ (read-inline ctx {#page-num;}) ++ inline-fil)
+      in
+        block-skip (bottom-space *' 0.2) +++ footer-main
+    in
+    let footer-origin = (left-space, page-height -' bottom-space) in
+    (|
+      header-content = header;
+      header-origin = header-origin;
+      footer-content = footer;
+      footer-origin = footer-origin;
+    |)
+  in
+  let doc-main =
+    page-break page pagecontf pagepartsf bb-main
+  in
+  let () = register-outline (List.reverse !outline-ref) in
+    doc-main
+
+end
+
+let document = MdBookSATySFi.document
+let l = MdBookSATySFi.l
+let c = MdBookSATySFi.c
+let r = MdBookSATySFi.r
+
