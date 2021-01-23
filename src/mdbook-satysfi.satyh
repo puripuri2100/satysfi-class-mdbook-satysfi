@@ -13,6 +13,7 @@
 @require: easytable/easytable
 @require: quotation/quotation
 @require: uline/uline
+@require: ruby/ruby
 
 
 module MdBookSATySFi : sig
@@ -37,6 +38,7 @@ module MdBookSATySFi : sig
   direct \code : [string] inline-cmd
   direct \href : [string; inline-text] inline-cmd
   direct \img : [string; inline-text] inline-cmd
+  direct +img : [inline-text option; string] block-cmd
   direct \footnote : [string] inline-cmd
   direct +add-footnote : [string; inline-text] block-cmd
   direct +rule : [] block-cmd
@@ -51,6 +53,9 @@ module MdBookSATySFi : sig
   val c : alignment
   val r : alignment
   direct +table : [alignment list; inline-text list; (inline-text list) list] block-cmd
+  direct \ruby : [inline-text] inline-cmd
+  direct \rp : [inline-text] inline-cmd
+  direct \rt : [inline-text] inline-cmd
 
 end = struct
 
@@ -259,7 +264,7 @@ let-mutable outline-ref <- []
 let-block ctx +heading n title =
   let font-size =
     match n with
-    | 1 -> 25pt
+    | 1 -> 23pt
     | 2 -> 20pt
     | 3 -> 18pt
     | _ -> 15pt
@@ -288,6 +293,22 @@ let-inline ctx \img path title =
   let bb = (line-break true false ctx (inline-fil ++ insert-image ++ inline-fil)) +++ fig-num-bb in
   inline-fil ++ embed-block-breakable ctx bb ++ inline-fil
 
+
+let-block ctx +img title-opt path =
+  let () = img-num <- !img-num + 1 in
+  let image = load-image path in
+  let insert-image = use-image-by-width image (text-width *' 0.75) in
+  let img-num-it = !img-num |> arabic |> embed-string in
+  let fig-num-bb =
+    match title-opt with
+    | None -> block-nil
+    | Some(title) -> (
+      let fig-num-ib = read-inline ctx {fig#img-num-it;: #title;} in
+      line-break false true ctx (inline-fil ++ fig-num-ib ++ inline-fil)
+    )
+  in
+  let bb = (line-break true false ctx (inline-fil ++ insert-image ++ inline-fil)) +++ fig-num-bb in
+  bb
 
 
 type alignment = cellfmt
@@ -501,6 +522,20 @@ let-inline ctx \enumerate n itemize =
     inline-fil ++ embed-block-breakable ctx (enumerate ctx n itemize)
 
 
+let-mutable ruby-text <- {}
+let-inline ctx \ruby it =
+  let _ = read-inline ctx it in
+  let ruby-str = !ruby-text |> read-inline ctx |> extract-string in
+  let text = {\ruby ?:[Ruby.mode Ruby.g] [ruby-str] {|#it;|}} in
+  let () = ruby-text <- {} in
+  read-inline ctx text
+
+
+let-inline ctx \rp _ = inline-nil
+
+let-inline ctx \rt it =
+  let () = ruby-text <- it in
+  inline-nil
 
 
 let-mutable toc-lst <- []
