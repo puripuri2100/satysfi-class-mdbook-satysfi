@@ -1,0 +1,109 @@
+%@require: class-mdbook-satysfi/mdbook-satysfi
+@import: ../src/mdbook-satysfi
+
+document (|
+  title = {class-mdbook-satysfi};
+  authors = [{Naoki Kaneko (a.k.a. "puripuri2100")}];
+  description = (Some({mdbook-satysfiの動作デモ}));
+  language = (Some(` ja `));
+|) '<
+  +Chapter (None) (0) {番号無し} <
+    +p{こんにちは}
+  >
+  +Chapter (None) (1) {番号無しその2} <
+    +p{改ページします}
+  >
+  +Separator;
+  +PartTitle{ここから番号有りに}
+  +Chapter (Some([1;])) (0) {番号有り} <
+    +heading (1) {事始め}
+  >
+  +Chapter (Some([1;1])) (1) {番号有りその2} <
+    +heading (1) {見出し1}
+    +heading (2) {見出し2}
+    +heading (3) {見出し3}
+    +heading (4) {見出し4}
+    +heading (5) {見出し5}
+    +heading (6) {見出し6}
+    +heading (1) {箇条書き}
+    +listing {|
+      \item {リスト1
+        \listing {|
+          \item {ネスト リスト1_1
+            \listing {|
+              \item {ネスト リスト1_1_1}
+              | \item {ネスト リスト1_1_2}
+              |}
+          }
+          | \item {ネスト リスト1_2}
+        |}
+      }
+    | \item {リスト2}
+    | \item {リスト3}
+    |}
+    +enumerate (1) {|
+      \item {番号付きリスト1
+        \enumerate (1) {|
+          \item {番号付きリスト1_1}
+          | \item {番号付きリスト1_2}
+        |}
+      }
+      | \item {番号付きリスト2}
+      | \item {番号付きリスト3
+        \listing {|
+          \item {fuga fuga2}
+        | \item {hoge}
+        |}
+      }
+    |}
+    +p {タスクマーカー}
+    +listing {|
+      \item {\task-list-marker(false);hoge}
+      | \item {\task-list-marker(true);hoge}
+      | \item {\task-list-marker(true);fuga}
+    |}
+    +heading (1) {引用}
+      +p {引用文}
+      +p{二重引用もわかりやすい}
+      +block-quote <
+        +p {返信}
+        +p {仕様です。}
+        +block-quote <
+          +p {こんにちは}
+          +p {これはバグですか？}
+        >
+      >
+    +heading (1) {code}
+    +p {コンパイルするときのコマンドは\code(` satysfi main.saty `);です}
+    +p {ブロックコード}
+    +code (`
+fn main () {
+  println!("Hello!")
+}
+    `);
+    +heading (1) {強調}
+      +p {normal \emph {italic} normal}
+      +p {normal \strong {bold} normal}
+      +p {normal \emph {\strong {bold italic}} normal}
+      +p {\strike {打ち消し線}}
+    +heading (1) {rule}
+      +rule;
+      +rule;
+      +rule;
+      +rule;
+    +heading (1) {リンク}
+      +p {\href (` https://www.google.co.jp/ `) {Google先生}}
+      +p {\href (` https://www.google.co.jp/ `) {こっちからgoogle} その他の文章 \href (` https://www.google.co.jp/ `) {こっちからもgoogle}}
+    +heading (1) {注釈}
+    +p {普通のテキスト\footnote(` 1 `);普通のテキスト}
+    +p{注釈は章の最後に付きます。}
+      +add-footnote(` 1 `) {\p {注釈内容\code(` code `);toka}}
+    +heading (1) {表組}
+      +p{内部でeasytableを使っています。}
+      +table [l;r;c;]({|header1|header2|header3|}) [{|align left|align right|align center|};{|a|b|c|};];
+    +heading (1) {text}
+      +p {text}
+      +p {text1 text2}
+      +p{\ruby{暇\rp{(}\rt{いとま}\rp{)}}（左のようにルビもできるよ（HTMLコードからの変換機能を使います））}
+  >
+>

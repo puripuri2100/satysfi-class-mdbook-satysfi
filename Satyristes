@@ -38,10 +38,10 @@
   ;; Build commands
   (build
     ;; Run SATySFi
-    ((satysfi "manual.saty" "-o" "manual.pdf")))
+    ((satysfi "class-mdbook-satysfi-demo.saty" "-o" "class-mdbook-satysfi-demo.pdf")))
   ;; Files
   (sources
-    ((doc "manual.pdf" "doc/manual.pdf")))
+    ((doc "class-mdbook-satysfi-demo.pdf" "doc/class-mdbook-satysfi-demol.pdf")))
   ;; OPAM package file
   (opam "satysfi-class-mdbook-satysfi-doc.opam")
   ;; Dependency
