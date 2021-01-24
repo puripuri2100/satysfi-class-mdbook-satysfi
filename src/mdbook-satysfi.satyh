@@ -700,12 +700,15 @@ let-block ctx +Chapter numbers-opt depth title bt =
     |> List.fold-left (+++) block-nil
   in
   let rule-block =
-    let line = Gr.line (0pt,0pt) (text-width *' 0.6,0pt) in
-    let thick = 1.0pt in
-    let ib =
-      inline-graphics (text-width *' 0.6) thick 0pt (fun pt -> (
-        [line |> shift-path pt |> stroke thick (Color.gray 0.4)]
-      ))
+    if List.length rev-footnote-lst == 0 then
+      block-nil
+    else
+      let line = Gr.line (0pt,0pt) (text-width *' 0.6,0pt) in
+      let thick = 1.0pt in
+      let ib =
+        inline-graphics (text-width *' 0.6) thick 0pt (fun pt -> (
+          [line |> shift-path pt |> stroke thick (Color.gray 0.4)]
+        ))
     in
     line-break true true ctx (ib ++ inline-fil)
   in

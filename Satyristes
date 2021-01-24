@@ -41,7 +41,7 @@
     ((satysfi "class-mdbook-satysfi-demo.saty" "-o" "class-mdbook-satysfi-demo.pdf")))
   ;; Files
   (sources
-    ((doc "class-mdbook-satysfi-demo.pdf" "doc/class-mdbook-satysfi-demol.pdf")))
+    ((doc "class-mdbook-satysfi-demo.pdf" "doc/class-mdbook-satysfi-demo.pdf")))
   ;; OPAM package file
   (opam "satysfi-class-mdbook-satysfi-doc.opam")
   ;; Dependency
