@@ -22,10 +22,12 @@ module MdBookSATySFi : sig
   val document: 'a -> block-text -> document
     constraint 'a :: (|
       title : inline-text;
-      author : inline-text;
+      authors : inline-text list;
+      description : inline-text option;
+      language : string option;
     |)
 
-  direct +Chapter : [int; inline-text; block-text] block-cmd
+  direct +Chapter : [(int list) option; int; inline-text; block-text] block-cmd
   direct +Separator : [] block-cmd
   direct +PartTitle : [inline-text] block-cmd
   direct \strong : [inline-text] inline-cmd
@@ -124,8 +126,12 @@ let ctx-get-initial-context l-width =
 let register-cross-reference-num label title =
   register-cross-reference (label ^ `-num`) title
 
-let register-cross-reference-page label title =
-  hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
+
+let register-cross-reference-page label =
+  hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `-page`) (arabic pbinfo#page-number))
+
+let register-cross-reference-page-block label =
+  hook-page-break-block (fun pbinfo _ -> register-cross-reference (label ^ `-page`) (arabic pbinfo#page-number))
 
 
 let get-cross-reference-num label =
@@ -316,7 +322,6 @@ let-inline ctx \code code =
   script-guard Latin ib
 
 
-let-mutable outline-ref <- []
 
 let-block ctx +heading n title =
   let font-size =
@@ -595,49 +600,261 @@ let-inline ctx \rt it =
   inline-nil
 
 
+let-mutable outline-lst <- []
 let-mutable toc-lst <- []
 type toc-type =
-  | Chapter of int * inline-text * int
-  | PartTitle of inline-text * int
+  | Chapter of string * int * inline-text
+  | PartTitle of inline-text * string
   | Separator
 
 let-block ctx +Separator =
   let () = toc-lst <- Separator::!toc-lst in
   block-nil
 
-let-block ctx +PartTitle it =
-  let f info _ =
-    toc-lst <- PartTitle(it, info#page-number)::!toc-lst
-  in
-  hook-page-break-block f
 
-let-block ctx +Chapter depth title bt =
-  let f info _ =
-    toc-lst <- Chapter(depth, title, info#page-number)::!toc-lst
+let-mutable parttitle-num <- 0
+
+let-block ctx +PartTitle it =
+  let () = parttitle-num <- !parttitle-num + 1 in
+  let label = `parttitle-`^(arabic !parttitle-num) in
+  let () = toc-lst <- PartTitle(it, label)::!toc-lst in
+  let bbhock = register-cross-reference-page-block label in
+  bbhock
+
+
+let-mutable chapter-num <- 0
+
+let-block ctx +Chapter numbers-opt depth title bt =
+  let () = chapter-num <- !chapter-num + 1 in
+  let label = `chapter-`^(arabic !chapter-num) in
+  let s-num-opt =
+    numbers-opt
+    |> Option.map (fun ilst -> ilst |> List.map arabic |> List.fold-left (fun s1 s2 -> s1^s2^`.`) ` `)
   in
-  let bn = hook-page-break-block f in
+  let it-num-opt = s-num-opt |> Option.map(embed-string) in
+  let toc-title =
+    match it-num-opt with
+    | Some(it-num) -> {#it-num; #title;}
+    | None -> title
+  in
+  let () = toc-lst <- Chapter(label, depth, toc-title)::!toc-lst in
+  let ibhook = register-cross-reference-page label in
+  let title-ctx =
+    ctx |> set-font-size 30pt
+        |> set-latin-font font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+        |> set-paragraph-margin 8pt 45pt
+  in
+  let ib-num =
+    match it-num-opt with
+      | Some(it-num) -> read-inline title-ctx it-num ++ inline-skip 15pt
+      | None -> inline-nil
+  in
+  let ib-num-width = get-natural-width ib-num in
+  let title-ib =
+    ib-num ++ ibhook ++ (title |> read-inline title-ctx |> script-guard Latin) ++ inline-fil
+    |> register-location-frame label
+  in
+  let title-str = extract-string title-ib in
+  let title-bb =
+    let pads = (ib-num-width, 0pt, 0pt, 0pt) in
+    let decoset = VDecoSet.empty in
+    block-frame-breakable title-ctx pads decoset (fun ctx -> (
+        line-break true false ctx (inline-skip (ib-num-width *' (float (-1))) ++ title-ib)
+      ))
+  in
+  let () = outline-lst <- (depth, title-str, label, depth < 1)::!outline-lst in
   let bb = read-block ctx bt in
   let rev-footnote-lst = List.reverse !footnote-lst in
   let footnote-block =
     rev-footnote-lst
     |> List.map (fun (key, it) -> (
-      let ib = read-inline ctx it in
-      ib
+      let ib =
+      it
+      |> read-inline ctx
       |> register-location-frame (`footnote-body`^key)
       |> link-to-location-frame (`footnote-num`^key)
+      in
+      ib
     )) %----- TODO: まともな関数にする
     |> List.map (fun ib -> line-break true true ctx (ib ++ inline-fil))
     |> List.fold-left (+++) block-nil
   in
   let () = footnote-lst <- [] in
-  clear-page +++ bn +++ bb +++ footnote-block %----- TODO: bodyとfootnoteの間に線とか入れたい
+  clear-page +++ title-bb +++ bb +++ footnote-block %----- TODO: bodyとfootnoteの間に線とか入れたい
 
+
+
+let make-toc-Separator ctx =
+  let line = Gr.line (0pt,0pt) (text-width *' 0.9,0pt) in
+  let thick = 1.0pt in
+  let ib =
+    inline-graphics (text-width *' 0.9) thick 0pt (fun pt -> (
+      [line |> shift-path pt |> stroke thick (Color.gray 0.4)]
+    ))
+  in
+  line-break true true ctx (inline-fil ++ ib ++ inline-fil)
+
+let toc-PartTitle-font-size = 15pt
+
+let make-toc-PartTitle ctx title page-str =
+  let ctx =
+    ctx |> set-font-size toc-PartTitle-font-size
+        |> set-latin-font font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+        |> set-paragraph-margin (paragraph-margin *' 1.3) paragraph-margin
+  in
+  let ib-title = read-inline ctx title in
+  let ib-page =
+    page-str
+    |> embed-string
+    |> read-inline ctx
+  in
+  let ib = ib-title ++ inline-fil ++ ib-page in
+  line-break true false ctx ib
+
+
+let-rec ib-repeat-inline n ib =
+  if n <= 0 then inline-nil else
+    ib ++ (ib-repeat-inline (n - 1) ib)
+
+let ib-make-dots-line ctx text-width =
+  let ib = read-inline ctx {.} ++ inline-skip 1pt in
+  let n = round (text-width /' (get-natural-width ib)) in
+    ib-repeat-inline n ib ++ inline-fil
+
+let toc-Chapter-font-size = font-size-normal
+
+let make-toc-Chapter ctx label depth title page-str =
+  let ctx =
+    ctx |> set-font-size toc-Chapter-font-size
+        |> set-latin-font font-latin-roman
+        |> set-cjk-font font-cjk-mincho
+  in
+  let text-width = get-text-width ctx in
+  let ib-title = read-inline ctx title in
+  let ib-page =
+    page-str
+    |> embed-string
+    |> read-inline ctx
+  in
+  match depth with
+  | 0 -> (
+    let ib = inline-skip toc-PartTitle-font-size ++ ib-title ++ inline-fil ++ ib-page in
+    line-break true true ctx (link-to-location-frame label ib)
+  )
+  | x when x <= 2 -> (
+    let indent = toc-Chapter-font-size *' (float x) in
+    let dots-width =
+      text-width
+        -' (get-natural-width (ib-title ++ ib-page))
+        -' toc-PartTitle-font-size
+        -' indent
+    in
+    let ib =
+      inline-skip toc-PartTitle-font-size
+        ++ inline-skip indent
+        ++ ib-title ++ inline-fil
+        ++ (ib-make-dots-line ctx dots-width)
+        ++ inline-fil ++ ib-page
+    in
+    line-break true true ctx (link-to-location-frame label ib)
+  )
+  | _ -> block-nil
 
 let document record inner =
   let ctx-doc = ctx-get-initial-context text-width in
   let bb-main = read-block ctx-doc inner in
 
   let page = UserDefinedPaper(page-width, page-height) in
+
+  let title = record#title in
+  let author-lst = record#authors in
+  let description-opt = record#description in
+  let language-opt = record#language in
+
+
+  let title-bb =
+    let ctx =
+      ctx-doc
+      |> set-font-size 33pt
+      |> set-latin-font font-latin-sans
+      |> set-cjk-font font-cjk-gothic
+    in
+    let title-ib = read-inline ctx title in
+      line-break true false ctx (title-ib ++ inline-fil)
+  in
+
+
+  let description-title =
+    match language-opt with
+    | Some(`ja`) -> {概要}
+    | Some(`en`) -> {description}
+    | _ -> {概要}
+  in
+  let description-bb =
+    match description-opt with
+    | None -> block-nil
+    | Some(description) -> (
+      let font-size = get-font-size ctx-doc in
+      let pads = (font-size *' 4.0, font-size *' 4.0, 0pt, 0pt) in
+      let description-bb =
+        block-frame-breakable ctx-doc pads VDecoSet.empty (fun ctx -> (
+          let description-ib = read-inline ctx description in
+          line-break false true ctx description-ib
+        ))
+      in
+      let title-ctx =
+        ctx-doc
+        |> set-latin-font font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+      in
+      let title-ib = read-inline title-ctx description-title in
+      let title-bb =
+        line-break true false title-ctx (inline-fil ++ title-ib ++ inline-fil)
+      in
+      title-bb +++ description-bb +++ block-skip 15pt
+    )
+  in
+
+
+  let toc-title =
+    match language-opt with
+    | Some(`ja`) -> {目次}
+    | Some(`en`) -> {Table of Contents}
+    | _ -> {目次}
+  in
+  let toc-title-bb =
+    let ctx =
+      ctx-doc
+      |> set-font-size 25pt
+      |> set-latin-font font-latin-sans
+      |> set-cjk-font font-cjk-gothic
+      |> set-paragraph-margin 8pt 45pt
+    in
+    let ib = read-inline ctx toc-title in
+    line-break true false ctx (ib ++ inline-fil)
+  in
+
+  let make-toc-fun toc =
+    match toc with
+    | Separator -> make-toc-Separator ctx-doc
+    | PartTitle (title, label) -> (
+      let page-str = get-cross-reference-page label in
+      make-toc-PartTitle ctx-doc title page-str
+    )
+    | Chapter (label, depth, title) -> (
+      let page-str = get-cross-reference-page label in
+      make-toc-Chapter ctx-doc label depth title page-str
+    )
+  in
+
+  let bb-toc =
+    !toc-lst
+    |> List.reverse
+    |> List.map make-toc-fun
+    |> List.fold-left (+++) block-nil
+  in
 
   let pagecontf pbinfo =
     (|
@@ -665,9 +882,10 @@ let document record inner =
     |)
   in
   let doc-main =
-    page-break page pagecontf pagepartsf bb-main
+    page-break page pagecontf pagepartsf
+      (title-bb +++ block-skip 15pt +++ description-bb +++ toc-title-bb +++ bb-toc +++ bb-main)
   in
-  let () = register-outline (List.reverse !outline-ref) in
+  let () = register-outline (List.reverse !outline-lst) in
     doc-main
 
 end
