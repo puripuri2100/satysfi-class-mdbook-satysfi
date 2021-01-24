@@ -1,5 +1,6 @@
-%@require: class-mdbook-satysfi/mdbook-satysfi
-@import: ../src/mdbook-satysfi
+@require: class-mdbook-satysfi/mdbook-satysfi
+
+@require: lipsum/lipsum
 
 document (|
   title = {class-mdbook-satysfi};
@@ -95,9 +96,10 @@ fn main () {
       +p {\href (` https://www.google.co.jp/ `) {Google先生}}
       +p {\href (` https://www.google.co.jp/ `) {こっちからgoogle} その他の文章 \href (` https://www.google.co.jp/ `) {こっちからもgoogle}}
     +heading (1) {注釈}
-    +p {普通のテキスト\footnote(` 1 `);普通のテキスト}
+    +p {普通のテキスト\footnote(` 1 `);普通のテキスト\footnote(` long `);}
     +p{注釈は章の最後に付きます。}
-      +add-footnote(` 1 `) {\p {注釈内容\code(` code `);toka}}
+      +add-footnote(` 1 `) {注釈です。\code(` code `);も書けます。}
+      +add-footnote(` long `) {長い注釈です。\quick-brown-fox;\jugemu;}
     +heading (1) {表組}
       +p{内部でeasytableを使っています。}
       +table [l;r;c;]({|header1|header2|header3|}) [{|align left|align right|align center|};{|a|b|c|};];

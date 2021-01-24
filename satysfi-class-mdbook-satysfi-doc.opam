@@ -19,6 +19,7 @@ depends: [
 
   # You may want to include the corresponding library
   "satysfi-class-mdbook-satysfi" {= "%{version}%"}
+  "satysfi-lipsum"
 ]
 build: [
   ["satyrographos" "opam" "build"

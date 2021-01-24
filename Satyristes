@@ -47,4 +47,5 @@
   ;; Dependency
   (dependencies
     ((class-mdbook-satysfi ()) ; the main library
+    (lipsum ())
     )))

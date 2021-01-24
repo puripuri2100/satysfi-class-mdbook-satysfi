@@ -675,16 +675,42 @@ let-block ctx +Chapter numbers-opt depth title bt =
       let ib =
       it
       |> read-inline ctx
-      |> register-location-frame (`footnote-body`^key)
-      |> link-to-location-frame (`footnote-num`^key)
       in
-      ib
-    )) %----- TODO: まともな関数にする
-    |> List.map (fun ib -> line-break true true ctx (ib ++ inline-fil))
+      let footnote-num-str = get-cross-reference-num (`footnote-`^key) in
+      let footnote-num-ib =
+        (footnote-num-str ^ `:`)
+        |> embed-string
+        |> read-inline ctx
+        |> register-location-frame (`footnote-body`^key)
+        |> link-to-location-frame (`footnote-num`^key)
+      in
+      %inline-skip (num-width *' (float (-1)))
+      let num-width = get-natural-width footnote-num-ib +' 5pt in
+      let main-ib = footnote-num-ib ++ inline-skip 5pt ++ (script-guard Latin ib) in
+      (num-width, main-ib)
+    ))
+    |> List.map (fun (num-width, main-ib) -> (
+      let pads = (num-width +' 5pt, 5pt, 5pt, 5pt) in
+      let decoset = VDecoSet.empty in
+      block-frame-breakable ctx pads decoset (fun ctx -> (
+        let space = inline-skip (num-width *' (float (-1))) in
+          line-break true true ctx (space ++ main-ib ++ inline-fil)
+      ))
+    ))
     |> List.fold-left (+++) block-nil
   in
+  let rule-block =
+    let line = Gr.line (0pt,0pt) (text-width *' 0.6,0pt) in
+    let thick = 1.0pt in
+    let ib =
+      inline-graphics (text-width *' 0.6) thick 0pt (fun pt -> (
+        [line |> shift-path pt |> stroke thick (Color.gray 0.4)]
+      ))
+    in
+    line-break true true ctx (ib ++ inline-fil)
+  in
   let () = footnote-lst <- [] in
-  clear-page +++ title-bb +++ bb +++ footnote-block %----- TODO: bodyとfootnoteの間に線とか入れたい
+  clear-page +++ title-bb +++ bb +++ rule-block +++ footnote-block
 
 
 
