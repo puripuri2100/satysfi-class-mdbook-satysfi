@@ -133,6 +133,9 @@ let register-cross-reference-page label =
 let register-cross-reference-page-block label =
   hook-page-break-block (fun pbinfo _ -> register-cross-reference (label ^ `-page`) (arabic pbinfo#page-number))
 
+let register-cross-reference-page-block-fix label =
+  hook-page-break-block (fun pbinfo _ -> register-cross-reference (label ^ `-page`) (arabic (pbinfo#page-number + 1)))
+
 
 let get-cross-reference-num label =
 match get-cross-reference (label ^ `-num`) with
@@ -618,7 +621,7 @@ let-block ctx +PartTitle it =
   let () = parttitle-num <- !parttitle-num + 1 in
   let label = `parttitle-`^(arabic !parttitle-num) in
   let () = toc-lst <- PartTitle(it, label)::!toc-lst in
-  let bbhock = register-cross-reference-page-block label in
+  let bbhock = register-cross-reference-page-block-fix label in
   bbhock
 
 
@@ -786,6 +789,27 @@ let document record inner =
   in
 
 
+  let author-bb =
+    let ctx =
+      ctx-doc
+      |> set-font-size 17pt
+      |> set-latin-font font-latin-sans
+      |> set-cjk-font font-cjk-gothic
+    in
+    let it =
+      author-lst
+      |> List.fold-lefti (fun i it1 it2 -> (
+        if i <= 0 then
+          it2
+        else
+          {#it1;, #it2;}
+      )) {}
+    in
+    let ib = read-inline ctx it in
+    line-break false true ctx (ib ++ inline-fil)
+  in
+
+
   let description-title =
     match language-opt with
     | Some(`ja`) -> {概要}
@@ -883,7 +907,8 @@ let document record inner =
   in
   let doc-main =
     page-break page pagecontf pagepartsf
-      (title-bb +++ block-skip 15pt +++ description-bb +++ toc-title-bb +++ bb-toc +++ bb-main)
+      (title-bb +++ block-skip 5pt +++ author-bb +++ block-skip 5pt
+        +++ description-bb +++ toc-title-bb +++ bb-toc +++ bb-main)
   in
   let () = register-outline (List.reverse !outline-lst) in
     doc-main
