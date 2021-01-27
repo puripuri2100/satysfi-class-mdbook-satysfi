@@ -39,6 +39,8 @@ module MdBookSATySFi : sig
   direct \p : [inline-text] inline-cmd
   direct +code : [string] block-cmd
   direct \code : [string] inline-cmd
+  direct +code-block : [string] block-cmd
+  direct \code-block : [string] inline-cmd
   direct \href : [string; inline-text] inline-cmd
   direct \img : [string; inline-text] inline-cmd
   direct +img : [inline-text option; string] block-cmd
@@ -51,11 +53,12 @@ module MdBookSATySFi : sig
   direct +listing : [inline-text list] block-cmd
   direct \enumerate : [int; inline-text list] inline-cmd
   direct +enumerate : [int; inline-text list] block-cmd
-  type alignment
-  val l : alignment
-  val c : alignment
-  val r : alignment
-  direct +table : [alignment list; inline-text list; (inline-text list) list] block-cmd
+  direct +table : [block-text] block-cmd
+  direct +thead : [block-text] block-cmd
+  direct +tbody : [block-text list] block-cmd
+  direct +tr : [inline-text list] block-cmd
+  direct \th : [string option; inline-text] inline-cmd
+  direct \td : [string option; inline-text] inline-cmd
   direct \ruby : [inline-text] inline-cmd
   direct \rp : [inline-text] inline-cmd
   direct \rt : [inline-text] inline-cmd
@@ -129,12 +132,6 @@ let register-cross-reference-num label title =
 
 let register-cross-reference-page label =
   hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `-page`) (arabic pbinfo#page-number))
-
-let register-cross-reference-page-block label =
-  hook-page-break-block (fun pbinfo _ -> register-cross-reference (label ^ `-page`) (arabic pbinfo#page-number))
-
-let register-cross-reference-page-block-fix label =
-  hook-page-break-block (fun pbinfo _ -> register-cross-reference (label ^ `-page`) (arabic (pbinfo#page-number + 1)))
 
 
 let get-cross-reference-num label =
@@ -271,7 +268,7 @@ let-block ctx +rule =
 
 
 
-let-block ctx +code code =
+let-block ctx +code-block code =
   let pads = (5pt, 5pt, 5pt, 5pt) in
   let decoset = VDecoSet.simple-frame 1pt (Color.gray 0.5) (Color.gray 0.85) in
   let f ctx =
@@ -279,6 +276,7 @@ let-block ctx +code code =
       ctx
       |> set-code-font
       |> set-paragraph-margin 4pt 4pt
+      |> set-font-size 10pt
     in
     let char-width = {0} |> read-inline ctx |> get-natural-width in
     let code-lst =
@@ -299,6 +297,12 @@ let-block ctx +code code =
       |> List.fold-left (+++) block-nil
   in
   block-frame-breakable ctx pads decoset f
+
+
+let-inline ctx \code-block code =
+  let bt = '<+code-block(code);> in
+  let bb = read-block ctx bt in
+  inline-fil ++ embed-block-breakable ctx bb ++ inline-fil
 
 
 
@@ -323,6 +327,12 @@ let-inline ctx \code code =
     |> inline-frame-breakable pads decoset
   in
   script-guard Latin ib
+
+
+let-block ctx +code code =
+  let it = {\code(code);} in
+  let ib = read-inline ctx it ++ inline-fil in
+  line-break true true ctx ib
 
 
 
@@ -376,17 +386,72 @@ let-block ctx +img title-opt path =
   bb
 
 
-type alignment = cellfmt
 
-let l = EasyTable.align-left
-let c = EasyTable.align-center
-let r = EasyTable.align-right
-
-let-block ctx +table alignment-lst header-lst body-lst =
-  let it = {\easytable(alignment-lst)(List.append header-lst (List.concat body-lst));} in
+let-mutable alignment-lst <- []
+let-mutable alignment-len <- 0
+let-mutable cell-lst <- []
+let-mutable is-head <- false
+let-block ctx +table bt =
+  let () = is-head <- false in
+  let () = alignment-lst <- [] in
+  let () = cell-lst <- [] in
+  let _ = read-block ctx bt in
+  let it = {\easytable(List.reverse !alignment-lst)(List.reverse !cell-lst);} in
   let ib = read-inline ctx it in
   line-break true true ctx (inline-fil ++ ib ++ inline-fil)
 
+
+let-block ctx +thead bt =
+  let () = is-head <- true in
+  let _ = read-block ctx bt in
+  let () = is-head <- false in
+  block-nil
+
+
+let-block ctx +tbody lst =
+  let () = is-head <- false in
+  let _ = List.map (read-block ctx) lst in
+  block-nil
+
+
+let-block ctx +tr cell =
+  if !is-head then
+    let len = List.length cell in
+    let () = alignment-len <- len in
+    let _ = List.map (read-inline ctx) cell in
+    block-nil
+  else
+    let-rec sub lst n =
+      if n >= !alignment-len then
+        match lst with
+        | x::_ -> let _ = read-inline ctx x in ()
+        | [] -> ()
+      else
+        match lst with
+        | x::xs -> let _ = read-inline ctx x in sub xs (n + 1)
+        | [] -> sub [] (n + 1)
+    in
+    let _ = sub cell 1 in
+    block-nil
+
+
+let-inline ctx \th alignment-opt it =
+  let width = (text-width *' 0.8) *' (1.0 /. (float !alignment-len)) in
+  let alignment =
+    match alignment-opt with
+    | Some(`left`) -> EasyTableAlias.lw width
+    | Some(`center`) -> EasyTableAlias.cw width
+    | Some(`right`) -> EasyTableAlias.rw width
+    | _ -> EasyTableAlias.cw width
+  in
+  let () = alignment-lst <- alignment::!alignment-lst in
+  let () = cell-lst <- it::!cell-lst in
+  inline-nil
+
+
+let-inline ctx \td alignment-opt it =
+  let () = cell-lst <- it::!cell-lst in
+  inline-nil
 
 
 let minus = float (-1)
@@ -621,8 +686,7 @@ let-block ctx +PartTitle it =
   let () = parttitle-num <- !parttitle-num + 1 in
   let label = `parttitle-`^(arabic !parttitle-num) in
   let () = toc-lst <- PartTitle(it, label)::!toc-lst in
-  let bbhock = register-cross-reference-page-block-fix label in
-  bbhock
+  block-nil
 
 
 let-mutable chapter-num <- 0
@@ -729,7 +793,7 @@ let make-toc-Separator ctx =
 
 let toc-PartTitle-font-size = 15pt
 
-let make-toc-PartTitle ctx title page-str =
+let make-toc-PartTitle ctx title =
   let ctx =
     ctx |> set-font-size toc-PartTitle-font-size
         |> set-latin-font font-latin-sans
@@ -737,12 +801,7 @@ let make-toc-PartTitle ctx title page-str =
         |> set-paragraph-margin (paragraph-margin *' 1.3) paragraph-margin
   in
   let ib-title = read-inline ctx title in
-  let ib-page =
-    page-str
-    |> embed-string
-    |> read-inline ctx
-  in
-  let ib = ib-title ++ inline-fil ++ ib-page in
+  let ib = ib-title ++ inline-fil in
   line-break true false ctx ib
 
 
@@ -892,10 +951,7 @@ let document record inner =
   let make-toc-fun toc =
     match toc with
     | Separator -> make-toc-Separator ctx-doc
-    | PartTitle (title, label) -> (
-      let page-str = get-cross-reference-page label in
-      make-toc-PartTitle ctx-doc title page-str
-    )
+    | PartTitle (title, label) -> make-toc-PartTitle ctx-doc title
     | Chapter (label, depth, title) -> (
       let page-str = get-cross-reference-page label in
       make-toc-Chapter ctx-doc label depth title page-str
@@ -945,7 +1001,3 @@ let document record inner =
 end
 
 let document = MdBookSATySFi.document
-let l = MdBookSATySFi.l
-let c = MdBookSATySFi.c
-let r = MdBookSATySFi.r
-
