@@ -117,9 +117,12 @@ fn main () {
           ];>);
         ];
       >
-    +heading (1) {text}
-      +p {text}
-      +p {text1 text2}
-      +p{\ruby{暇\rp{(}\rt{いとま}\rp{)}}（左のようにルビもできるよ（HTMLコードからの変換機能を使います））}
+    +heading (1) {HTMLからの変換で使えるコマンド}
+      +p{ルビ。\code(`\ruby{暇\rp{(}\rt{いとま}\rp{)}}`);：\ruby{暇\rp{(}\rt{いとま}\rp{)}}}
+      +p{\code(`上付き\sup{文字}下付き\sub{文字}`);：上付き\sup{文字}下付き\sub{文字}}
+      +p{ライセンス等。\code(`\small{(c) 2021 Naoki Kaneko}`);：\small{(c) 2021 Naoki Kaneko}}
+      +p{引用コマンドの\code(`\cite`);と\code(`\q`);。例：夏目漱石の\cite{草枕}の一節、\q{智に働けば角が立つ。情に棹させば流される。意地を通せば窮屈だ。}}
+      +p{\code(`\dfn`);は新しい単語が出てくることを表します。例えば、「\dfn{夏目漱石}」は初出です。}
+      +p{\code(`\abbr`);は略語であることを表します。：\abbr(Some({What You See Is What You Get})){WYSIWYG}}
   >
 >

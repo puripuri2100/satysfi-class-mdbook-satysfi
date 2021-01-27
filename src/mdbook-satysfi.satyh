@@ -62,6 +62,13 @@ module MdBookSATySFi : sig
   direct \ruby : [inline-text] inline-cmd
   direct \rp : [inline-text] inline-cmd
   direct \rt : [inline-text] inline-cmd
+  direct \sup : [inline-text] inline-cmd
+  direct \sub : [inline-text] inline-cmd
+  direct \small : [inline-text] inline-cmd
+  direct \cite : [inline-text] inline-cmd
+  direct \q : [inline-text] inline-cmd
+  direct \dfn : [inline-text] inline-cmd
+  direct \abbr : [inline-text option; inline-text] inline-cmd
 
 end = struct
 
@@ -666,6 +673,67 @@ let-inline ctx \rp _ = inline-nil
 let-inline ctx \rt it =
   let () = ruby-text <- it in
   inline-nil
+
+
+let-inline ctx \sup it =
+  let font-size = get-font-size ctx in
+  let ib =
+    let ctx =
+      ctx
+      |> set-font-size (font-size *' 0.75)
+      |> set-manual-rising (font-size *' 0.25)
+    in
+      read-inline ctx it
+  in
+  ib
+
+
+let-inline ctx \sub it =
+  let font-size = get-font-size ctx in
+  let ib =
+    let ctx =
+      ctx
+      |> set-font-size (font-size *' 0.75)
+      |> set-manual-rising (font-size *' (0.25 *. (float (-1))))
+    in
+      read-inline ctx it
+  in
+  ib
+
+
+let-inline ctx \small it =
+  let fontsize = get-font-size ctx in
+  let ctx =
+    ctx |> set-font-size (fontsize *' 0.75)
+  in
+  read-inline ctx it
+
+
+let-inline \cite it = it
+
+
+let-inline \q it = {"#it;"}
+
+
+let-inline ctx \dfn it =
+  let ctx =
+    ctx |> set-latin-font font-latin-bold
+        |> set-cjk-font font-cjk-gothic
+  in
+  read-inline ctx it
+
+
+let-inline ctx \abbr long-opt short =
+  let ctx =
+    ctx |> set-latin-font font-latin-italic
+        |> set-cjk-font font-cjk-gothic
+  in
+  let it =
+    match long-opt with
+    | Some(long) -> {#short;(#long;)}
+    | None -> short
+  in
+  read-inline ctx it
 
 
 let-mutable outline-lst <- []
