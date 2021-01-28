@@ -16,7 +16,7 @@ This requires Satyrographos to install. See https://github.com/na4zagin3/satyrog
 ### opam install + satyrographos install
 
 ```sh
-opam pin add "git+https://github.com/puripuri2100/satysfi-class-mdbook-satysfi.git"
+opam update
 opam install satysfi-class-mdbook-satysfi
 satyrographos install
 ```
