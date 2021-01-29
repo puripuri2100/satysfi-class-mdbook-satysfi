@@ -28,7 +28,7 @@ depends: [
   "satysfi-fonts-noto-serif-cjk-jp"
   "satysfi-fonts-noto-sans"
   "satysfi-fonts-noto-sans-cjk-jp"
-  "satysfi-fonts-dejavu"
+  "satysfi-fonts-inconsolata"
 ]
 build: [ ]
 install: [

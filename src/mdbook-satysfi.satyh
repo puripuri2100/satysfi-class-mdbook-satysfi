@@ -81,7 +81,7 @@ let font-latin-bold = (`fonts-noto-serif:NotoSerif-Bold`, font-ratio-latin, 0.)
 let font-latin-italic = (`fonts-noto-serif:NotoSerif-Italic`, font-ratio-latin, 0.)
 let font-latin-bold-italic = (`fonts-noto-serif:NotoSerif-BoldItalic`, font-ratio-latin, 0.)
 let font-latin-sans = (`fonts-noto-sans:NotoSans-Regular`, font-ratio-latin, 0.)
-let font-latin-mono = (`fonts-dejavu:DejaVuSansMono`, font-ratio-latin, 0.)
+let font-latin-mono = (`fonts-inconsolata:Inconsolata-SemiCondensed`, font-ratio-latin, 0.)
 let font-cjk-mincho = (`fonts-noto-serif-cjk-jp:NotoSerifCJKjp-Regular`, font-ratio-cjk, 0.)
 let font-cjk-gothic = (`fonts-noto-sans-cjk-jp:NotoSansCJKjp-Regular`, font-ratio-cjk, 0.)
 
@@ -285,7 +285,7 @@ let-block ctx +code-block code =
       |> set-paragraph-margin 4pt 4pt
       |> set-font-size 10pt
     in
-    let char-width = {0} |> read-inline ctx |> get-natural-width in
+    let char-width = {x} |> read-inline ctx |> get-natural-width in
     let code-lst =
       code
       |> split-into-lines

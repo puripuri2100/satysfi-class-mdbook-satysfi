@@ -24,7 +24,7 @@
     (fonts-noto-serif-cjk-jp ())
     (fonts-noto-sans ())
     (fonts-noto-sans-cjk-jp ())
-    (fonts-dejavu ())
+    (fonts-inconsolata ())
     )))
 
 ;; Library doc declaration
