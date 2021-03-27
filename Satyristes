@@ -6,7 +6,7 @@
   ;; Library name
   (name "class-mdbook-satysfi")
   ;; Library version
-  (version "0.2.0")
+  (version "0.3.0")
   ;; Files
   (sources
     ((packageDir "src")))
@@ -32,7 +32,7 @@
   ;; Library doc name
   (name "class-mdbook-satysfi-doc")
   ;; Library version
-  (version "0.2.0")
+  (version "0.3.0")
   ;; Working directory to build docs
   (workingDirectory "doc")
   ;; Build commands

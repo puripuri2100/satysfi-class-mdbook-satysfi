@@ -34,6 +34,7 @@ module MdBookSATySFi : sig
   direct \emph : [inline-text] inline-cmd
   direct \strike : [inline-text] inline-cmd
   direct +block-quote : [block-text] block-cmd
+  direct \block-quote : [block-text] inline-cmd
   direct +heading : [int; inline-text] block-cmd
   direct +p : [inline-text] block-cmd
   direct \p : [inline-text] inline-cmd
@@ -43,7 +44,7 @@ module MdBookSATySFi : sig
   direct \code-block : [string] inline-cmd
   direct \href : [string; inline-text] inline-cmd
   direct \img : [string; inline-text] inline-cmd
-  direct +img : [inline-text option; string] block-cmd
+  direct +img : [string; inline-text] block-cmd
   direct \footnote : [string] inline-cmd
   direct +add-footnote : [string; inline-text] block-cmd
   direct +rule : [] block-cmd
@@ -250,6 +251,11 @@ let-block ctx +block-quote bt =
   Quotation.quotation-scheme ctx (Some f) None None bt
 
 
+let-inline ctx \block-quote bt =
+  let quote-bt = '<+block-quote(bt);> in
+  let quote-bb = read-block ctx quote-bt in
+    inline-fil ++ embed-block-breakable ctx quote-bb
+
 
 let indent ctx = inline-skip ((get-font-size ctx) *' font-ratio-cjk)
 
@@ -376,18 +382,14 @@ let-inline ctx \img path title =
   inline-fil ++ embed-block-breakable ctx bb ++ inline-fil
 
 
-let-block ctx +img title-opt path =
+let-block ctx +img path title =
   let () = img-num <- !img-num + 1 in
   let image = load-image path in
   let insert-image = use-image-by-width image (text-width *' 0.75) in
   let img-num-it = !img-num |> arabic |> embed-string in
   let fig-num-bb =
-    match title-opt with
-    | None -> block-nil
-    | Some(title) -> (
-      let fig-num-ib = read-inline ctx {fig#img-num-it;: #title;} in
-      line-break false true ctx (inline-fil ++ fig-num-ib ++ inline-fil)
-    )
+    let fig-num-ib = read-inline ctx {fig#img-num-it;: #title;} in
+    line-break false true ctx (inline-fil ++ fig-num-ib ++ inline-fil)
   in
   let bb = (line-break true false ctx (inline-fil ++ insert-image ++ inline-fil)) +++ fig-num-bb in
   bb
