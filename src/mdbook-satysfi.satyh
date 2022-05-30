@@ -15,6 +15,9 @@
 @require: quotation/quotation
 @require: uline/uline
 @require: ruby/ruby
+@require: code-printer/code-printer
+@require: code-printer/code-syntax
+@require: code-printer/code-theme
 
 
 module MdBookSATySFi : sig
@@ -40,8 +43,8 @@ module MdBookSATySFi : sig
   direct \p : [inline-text] inline-cmd
   direct +code : [string] block-cmd
   direct \code : [string] inline-cmd
-  direct +code-block : [string] block-cmd
-  direct \code-block : [string] inline-cmd
+  direct +code-block : [string option; string option; string] block-cmd
+  direct \code-block : [string option; string option; string] inline-cmd
   direct \href : [string; inline-text] inline-cmd
   direct \img : [string; inline-text] inline-cmd
   direct +img : [string; inline-text] block-cmd
@@ -281,39 +284,96 @@ let-block ctx +rule =
 
 
 
-let-block ctx +code-block code =
-  let pads = (5pt, 5pt, 5pt, 5pt) in
-  let decoset = VDecoSet.simple-frame 1pt (Color.gray 0.5) (Color.gray 0.85) in
-  let f ctx =
-    let ctx =
-      ctx
-      |> set-code-font
-      |> set-paragraph-margin 4pt 4pt
-      |> set-font-size 10pt
-    in
-    let char-width = {x} |> read-inline ctx |> get-natural-width in
-    let code-lst =
+let-block +code-block syntax-opt theme-opt code =
+  let code =
+    if string-same (string-sub code 0 1) (string-unexplode [0x0A]) then
+      string-sub code 1 ((string-length code) - 1)
+    else if string-same (string-sub code 0 1) (string-unexplode [0x0D]) then
+      string-sub code 1 ((string-length code) - 1)
+    else if string-same (string-sub code 0 1) (string-unexplode [0x0A]) then
+      string-sub code 1 ((string-length code) - 1)
+    else if string-same (string-sub code 0 2) (string-unexplode [0x0A;0x0D]) then
+      string-sub code 1 ((string-length code) - 2)
+    else if string-same (string-sub code 0 1) #` `# then
+      string-sub code 1 ((string-length code) - 1)
+    else
       code
-      |> split-into-lines
-      |> List.tail
-      |> Option.unwrap-or([])
-    in
-      code-lst
-      |> List.map (fun (i, s) -> (
-        let ib =
-          inline-skip (char-width *' (float i))
-          ++ read-inline ctx (embed-string s)
-          ++ inline-fil
-        in
-        line-break true true ctx ib
-      ))
-      |> List.fold-left (+++) block-nil
   in
-  block-frame-breakable ctx pads decoset f
+  let syntax =
+    match syntax-opt with
+    | Some(`satysfi`) -> CodeSyntax.satysfi
+    | Some(`ocaml`) -> CodeSyntax.ocaml
+    | Some(`rust`) -> CodeSyntax.rust
+    | Some(`cobol`) ->CodeSyntax.cobol
+    | Some(`c`) ->CodeSyntax.c
+    | Some(`cpp`) ->CodeSyntax.cpp
+    | Some(`csharp`) ->CodeSyntax.csharp
+    | Some(`d`) ->CodeSyntax.d
+    | Some(`erlang`) ->CodeSyntax.erlang
+    | Some(`fsharp`) ->CodeSyntax.fsharp
+    | Some(`fortran`) ->CodeSyntax.fortran
+    | Some(`go`) ->CodeSyntax.go
+    | Some(`haskell`) ->CodeSyntax.haskell
+    | Some(`html`) ->CodeSyntax.html
+    | Some(`java`) ->CodeSyntax.java
+    | Some(`javascript`) ->CodeSyntax.javascript
+    | Some(`json`) ->CodeSyntax.json
+    | Some(`json5`) ->CodeSyntax.json5
+    | Some(`julia`) ->CodeSyntax.julia
+    | Some(`kotlin`) ->CodeSyntax.kotlin
+    | Some(`lua`) ->CodeSyntax.lua
+    | Some(`lisp`) ->CodeSyntax.lisp
+    | Some(`nim`) ->CodeSyntax.nim
+    | Some(`makefile`) ->CodeSyntax.makefile
+    | Some(`shell`) ->CodeSyntax.shell
+    | Some(`perl`) ->CodeSyntax.perl
+    | Some(`prolog`) ->CodeSyntax.prolog
+    | Some(`php`) ->CodeSyntax.php
+    | Some(`python`) ->CodeSyntax.python
+    | Some(`r`) ->CodeSyntax.r
+    | Some(`ruby`) ->CodeSyntax.ruby
+    | Some(`scala`) ->CodeSyntax.scala
+    | Some(`swift`) ->CodeSyntax.swift
+    | Some(`tex`) ->CodeSyntax.tex
+    | Some(`toml`) ->CodeSyntax.toml
+    | Some(`typescript`) ->CodeSyntax.typescript
+    | Some(`visualbasic`) ->CodeSyntax.visualbasic
+    | Some(`xml`) ->CodeSyntax.xml
+    | _ -> CodePrinter.default-syntax
+  in
+  let theme =
+    match theme-opt with
+    | Some(`basic-light`) -> CodeTheme.basic-light
+    | Some(`basic-dark`) -> CodeTheme.basic-dark
+    | Some(`basic-font`) -> CodeTheme.basic-font
+    | Some(`gruvbox-light`) -> CodeTheme.gruvbox-light
+    | Some(`gruvbox-dark`) -> CodeTheme.gruvbox-dark
+    | Some(`dracula`) -> CodeTheme.dracula
+    | Some(`iceberg-dark`) -> CodeTheme.iceberg-dark
+    | Some(`iceberg-light`) -> CodeTheme.iceberg-light
+    | Some(`tokyo-night`) -> CodeTheme.tokyo-night
+    | Some(`tokyo-night-strom`) -> CodeTheme.tokyo-night-strom
+    | Some(`tokyo-night-light`) -> CodeTheme.tokyo-night-light
+    | Some(`ayu-dark`) -> CodeTheme.ayu-dark
+    | Some(`ayu-mirage`) -> CodeTheme.ayu-mirage
+    | Some(`ayu-light`) -> CodeTheme.ayu-light
+    | Some(`spacegray-eighties`) -> CodeTheme.spacegray-eighties
+    | Some(`spacegray-mocha`) -> CodeTheme.spacegray-mocha
+    | Some(`spacegray-ocean-dark`) -> CodeTheme.spacegray-ocean-dark
+    | Some(`spacegray-ocean-light`) -> CodeTheme.spacegray-ocean-light
+    | Some(`night-owl`) -> CodeTheme.night-owl
+    | Some(`light-owl`) -> CodeTheme.light-owl
+    | Some(`winteriscoming-dark-blue`) -> CodeTheme.winteriscoming-dark-blue
+    | Some(`winteriscoming-dark-black`) -> CodeTheme.winteriscoming-dark-black
+    | Some(`winteriscoming-light`) -> CodeTheme.winteriscoming-light
+    | Some(`one-light`) -> CodeTheme.one-light
+    | _ -> CodeTheme.basic-font
+  in
+  '<+code-printer ?:(CodePrinter.make-config syntax theme) (code);>
 
 
-let-inline ctx \code-block code =
-  let bt = '<+code-block(code);> in
+let-inline ctx \code-block syntax-opt theme-opt  code =
+  let bt = '<+code-block (syntax-opt) (theme-opt) (code);> in
   let bb = read-block ctx bt in
   inline-fil ++ embed-block-breakable ctx bb ++ inline-fil
 
