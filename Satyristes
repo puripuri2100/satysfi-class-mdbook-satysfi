@@ -25,6 +25,7 @@
     (fonts-noto-sans ())
     (fonts-noto-sans-cjk-jp ())
     (fonts-inconsolata ())
+    (fonts-code-printer ())
     )))
 
 ;; Library doc declaration
