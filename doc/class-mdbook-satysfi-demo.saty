@@ -1,4 +1,5 @@
-@require: class-mdbook-satysfi/mdbook-satysfi
+@import: ../src/mdbook-satysfi
+%@require: class-mdbook-satysfi/mdbook-satysfi
 
 @require: lipsum/lipsum
 
@@ -68,8 +69,8 @@ document (|
       >
     +heading (1) {code}
     +p {コンパイルするときのコマンドは\code(` satysfi main.saty `);です}
-    +p {ブロックコード}
-    +code-block (`
+    +p {ブロックコード。カラーテーマとコードシンタックスを変更できます。}
+    +code-block (Some(`rust`)) (Some(`gruvbox-light`)) (`
 fn main () {
   println!("Hello!")
 }
